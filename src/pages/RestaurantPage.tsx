@@ -1,0 +1,12 @@
+import { Clock3, MapPin, Phone, Star } from 'lucide-react'
+import { useParams, Link } from 'react-router-dom'
+import { formatLkr, menuItems, restaurants } from '../services/sriLankanData'
+import { useCart } from '../store/CartContext'
+import { Button } from '../components/ui/Button'
+
+export function RestaurantPage() {
+  const { restaurantId = 'island-spice' } = useParams(); const { addItem, count, subtotal } = useCart()
+  const restaurant = restaurants.find((item) => item.id === restaurantId) ?? restaurants[0]
+  const menu = menuItems.filter((item) => item.restaurantId === restaurant.id)
+  return <div className="page container"><section className="restaurant-hero"><img src={restaurant.image} alt={`${restaurant.name} signature dishes`} /><div><span className="eyebrow">{restaurant.status} today</span><h1>{restaurant.name}</h1><p>{restaurant.cuisine} · {restaurant.price}</p><div className="restaurant-details"><span><Star size={17} fill="currentColor" /> {restaurant.rating} ({restaurant.reviews}+)</span><span><Clock3 size={17} /> {restaurant.deliveryTime}</span><span><MapPin size={17} /> {restaurant.address}</span><span><Phone size={17} /> 011 234 5678</span></div></div>{count > 0 && <aside className="cart-preview"><strong>Your cart</strong><span>{count} {count === 1 ? 'item' : 'items'}</span><b>{formatLkr(subtotal)}</b><Link className="button button--secondary" to="/cart">View cart</Link></aside>}</section><div className="tabs"><button className="active">Menu</button><button>Reviews ({restaurant.reviews}+)</button><button>Info</button></div><div className="chip-row menu-categories">{['Popular','Breakfast','Kottu','Rice & Curry','Short Eats','Sweets'].map((x) => <button key={x}>{x}</button>)}</div><section className="menu-list"><div className="section-heading"><div><span className="eyebrow">Freshly prepared</span><h2>Popular menu</h2></div></div>{menu.length ? menu.map((item) => <article className="menu-item" key={item.id}><img loading="lazy" src={item.image} alt={item.name} /><div><h3>{item.name}</h3><p>{item.description}</p></div><strong>{formatLkr(item.price)}</strong><Button onClick={() => addItem(item)}>Add to cart</Button></article>) : <div className="empty-state"><h2>No dishes found</h2><p>This restaurant is updating its menu. Explore another Foodie partner nearby.</p><Link className="button button--primary" to="/restaurants">Browse restaurants</Link></div>}</section></div>
+}
