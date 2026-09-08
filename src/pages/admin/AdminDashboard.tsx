@@ -1,0 +1,18 @@
+import { AlertTriangle, Building2, CircleDollarSign, ClipboardCheck, ShoppingBag, Store, Truck, Users } from 'lucide-react'
+import { useCallback } from 'react'
+import { Link } from 'react-router-dom'
+import { AdminChartCard, AdminMetricCard, AdminStatus, label, money } from '../../components/admin/AdminUi'
+import { ErrorState, LoadingState } from '../../components/ui/AsyncState'
+import { adminApi } from '../../core/api/services'
+import { useAsyncResource } from '../../core/api/useAsyncResource'
+
+export function AdminDashboard(){
+ const resource=useAsyncResource(useCallback(()=>adminApi.dashboard(),[]))
+ if(resource.loading)return <LoadingState label="Loading live system overview…"/>
+ if(resource.error||!resource.data)return <ErrorState message={resource.error||'Dashboard unavailable'} retry={resource.retry}/>
+ const {kpis,data}= {kpis:resource.data.kpis,data:resource.data}
+ return <><div className="portal-title admin-title"><div><span className="eyebrow">System command centre</span><h1>Admin overview</h1><p>{new Intl.DateTimeFormat('en-LK',{dateStyle:'full'}).format(new Date())}</p></div><Link className="attention-pill" to="/admin/approvals"><AlertTriangle/> {kpis.pendingApprovals} need attention</Link></div>
+ <div className="admin-kpi-grid"><AdminMetricCard icon={<CircleDollarSign/>} label="Total sales" value={money(kpis.totalSales)} note="Delivered and paid"/><AdminMetricCard icon={<ShoppingBag/>} label="Orders today" value={kpis.ordersToday} note={`${kpis.activeOrders} currently active`}/><AdminMetricCard icon={<Users/>} label="Total customers" value={kpis.totalCustomers} note={`${kpis.newUsersThisWeek} new users this week`}/><AdminMetricCard icon={<Store/>} label="Active restaurants" value={kpis.openRestaurants} note={`${kpis.totalRestaurants} registered`}/><AdminMetricCard icon={<Building2/>} label="Restaurant owners" value={kpis.totalRestaurantOwners}/><AdminMetricCard icon={<Truck/>} label="Delivery riders" value={kpis.totalDeliveryRiders} note={`${kpis.availableRiders} available`}/><AdminMetricCard icon={<ClipboardCheck/>} label="Pending approvals" value={kpis.pendingApprovals}/><AdminMetricCard icon={<CircleDollarSign/>} label="Average order" value={money(kpis.averageOrderValue)}/></div>
+ <div className="admin-dashboard-grid"><AdminChartCard title="Order status" subtitle="Current system distribution"><div className="admin-distribution">{data.orderStatusDistribution.map(item=><div key={item.status}><span><i className={`status-dot status-dot--${item.status}`}/>{label(item.status)}</span><strong>{item.count}</strong></div>)}</div></AdminChartCard><AdminChartCard title="User distribution" subtitle="Registered accounts by role"><div className="admin-distribution">{data.userDistribution.map(item=><div key={item.role}><span>{label(item.role)}</span><strong>{item.count}</strong></div>)}</div></AdminChartCard></div>
+ <div className="admin-dashboard-grid"><AdminChartCard title="Top restaurants" subtitle="Delivered and paid orders"><div className="admin-ranking">{data.topRestaurants.map((item,index)=><div key={item.restaurantId}><b>{index+1}</b><span><strong>{item.name}</strong><small>{item.orders} orders</small></span><em>{money(item.revenue)}</em></div>)}</div></AdminChartCard><AdminChartCard title="Recent activity" subtitle="Newest users and orders"><div className="admin-activity">{data.recentActivity.users.map(user=><div key={user._id}><span className="initial">{user.name.slice(0,1)}</span><span><strong>{user.name}</strong><small>Joined as {label(user.role)}</small></span><AdminStatus value={user.accountStatus}/></div>)}</div></AdminChartCard></div></>
+}
