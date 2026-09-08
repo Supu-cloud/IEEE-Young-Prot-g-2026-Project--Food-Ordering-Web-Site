@@ -1,328 +1,96 @@
-import { Banknote, CreditCard, LockKeyhole, MapPin, ShoppingBag, WalletCards } from 'lucide-react';
-import { useState, useEffect, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { orderApi, paymentApi } from '../core/api/services';
-import { AppApiError } from '../core/api/apiError';
-import { useAuth } from '../core/auth/AuthContext';
-import { formatLkr } from '../services/sriLankanData';
-import { useCart } from '../store/CartContext';
-import { environment } from '../core/config/environment';
+import { useEffect, useState, type FormEvent } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { loadStripe } from '@stripe/stripe-js'
+import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js'
+import { paymentApi } from '../core/api/services'
+import type { CheckoutAttempt } from '../core/types/api'
+import { useAuth } from '../core/auth/AuthContext'
+import { environment } from '../core/config/environment'
+import { useCart } from '../store/CartContext'
+import { formatLkr } from '../services/sriLankanData'
 
-// Stripe Packages Import
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+const testKey = environment.stripePublishableKey?.startsWith('pk_test_')
+const stripePromise = testKey ? loadStripe(environment.stripePublishableKey) : null
 
-// Load Stripe instance safely with a string fallback to prevent uncaught runtime errors
-const stripeKey = environment?.stripePublishableKey || '';
-const stripePromise = stripeKey ? loadStripe(stripeKey) : null;
-
-// =========================================================================
-// 1. Stripe Card Input Component
-// =========================================================================
-interface StripeFormProps {
-  clientSecret: string;
-  onSuccess: () => void;
-  onError: (msg: string) => void;
-  busy: boolean;
-  setBusy: (state: boolean) => void;
+function CardPayment({ attempt, finish, busy, setBusy, onError }: { attempt: CheckoutAttempt; finish: () => Promise<void>; busy: boolean; setBusy: (busy: boolean) => void; onError: (message: string) => void }) {
+  const stripe = useStripe(); const elements = useElements()
+  const pay = async () => {
+    if (!stripe || !elements || busy) return
+    setBusy(true); onError('')
+    try {
+      // Re-read the same intent first: a lost confirmation response must never
+      // cause a second payment attempt after a successful charge.
+      const existing = await stripe.retrievePaymentIntent(attempt.clientSecret)
+      if (existing.error) throw new Error(existing.error.message)
+      if (existing.paymentIntent?.status === 'succeeded') { await finish(); return }
+      const card = elements.getElement(CardElement)
+      if (!card) throw new Error('Card form is not ready')
+      const result = await stripe.confirmCardPayment(attempt.clientSecret, { payment_method: { card } })
+      if (result.error) throw new Error(result.error.message)
+      if (result.paymentIntent?.status !== 'succeeded') throw new Error('Payment is still processing. Retry this checkout to check its status.')
+      await finish()
+    } catch (caught) { onError(caught instanceof Error ? caught.message : 'Unable to complete payment. Your checkout reference is saved; retry here.') }
+    finally { setBusy(false) }
+  }
+  return <><div className="checkout-panel"><CardElement /></div><button type="button" className="button button--primary button--full" disabled={busy || !stripe} onClick={() => void pay()}>{busy ? 'Verifying payment and saving order…' : 'Pay with Stripe TEST MODE'}</button></>
 }
 
-const StripePaymentForm = ({ clientSecret, onSuccess, onError, busy, setBusy }: StripeFormProps) => {
-  const stripe = useStripe();
-  const elements = useElements();
-
-  const handleCardPayment = async () => {
-    if (!stripe || !elements) return;
-
-    setBusy(true);
-    const cardElement = elements.getElement(CardElement);
-    if (!cardElement) {
-      setBusy(false);
-      return;
-    }
-
-    const { paymentIntent, error } = await stripe.confirmCardPayment(clientSecret, {
-      payment_method: { card: cardElement },
-    });
-
-    if (error) {
-      onError(error.message || 'Payment processing failed.');
-      setBusy(false);
-    } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-      onSuccess();
-    }
-  };
-
-  return (
-    <div className="stripe-card-form" style={{ marginTop: '1rem' }}>
-      <div 
-        className="stripe-input-container" 
-        style={{ 
-          padding: '14px', 
-          border: '1px solid #d1d5db', 
-          borderRadius: '8px', 
-          background: '#ffffff',
-          minHeight: '45px'
-        }}
-      >
-        <CardElement 
-          options={{ 
-            disableLink: true, // Stripe Link Popup එක Disable කරයි
-            style: { 
-              base: { 
-                fontSize: '16px', 
-                color: '#1f2937',
-                '::placeholder': { color: '#9ca3af' },
-              },
-              invalid: { color: '#ef4444' } 
-            } 
-          }} 
-        />
-      </div>
-      
-      <button 
-        type="button" 
-        onClick={() => void handleCardPayment()}
-        className="button button--primary button--full" 
-        disabled={!stripe || busy} 
-        style={{ marginTop: '1rem' }}
-      >
-        {busy ? 'Processing Card…' : 'Pay and Place Order'}
-      </button>
-    </div>
-  );
-};
-
-// =========================================================================
-// 2. Main Checkout Page Component
-// =========================================================================
 export function CheckoutConnectedPage() {
-  const cart = useCart();
-  const { user } = useAuth();
-  const navigate = useNavigate();
-
-  const [method, setMethod] = useState<'cash' | 'wallet' | 'card'>('cash');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [clientSecret, setClientSecret] = useState('');
-
-  const delivery = 350;
-  const total = cart.subtotal + delivery;
-
+  const cart = useCart(); const { user } = useAuth(); const navigate = useNavigate()
+  const storageKey = `foodie-checkout:${user?._id}`
+  const [attempt, setAttempt] = useState<CheckoutAttempt | null>(null)
+  const [busy, setBusy] = useState(false); const [error, setError] = useState('')
+  const [recovering, setRecovering] = useState(() => Boolean(localStorage.getItem(storageKey)))
+  const [address, setAddress] = useState(user?.address ?? '')
+  const [note, setNote] = useState('')
   useEffect(() => {
-    let isMounted = true;
-
-    if (method === 'card' && cart.lines.length > 0) {
-      setBusy(true);
-      setError('');
-
-      fetch('http://localhost:5000/api/create-payment-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: total }),
-      })
-        .then(async (res) => {
-          if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            throw new Error(errData.error || `Server error: ${res.status}`);
-          }
-          return res.json();
-        })
-        .then((data) => {
-          if (!isMounted) return;
-          if (data.clientSecret) {
-            setClientSecret(data.clientSecret);
-          } else {
-            setError('Failed to initialize payment gateway.');
-          }
-        })
-        .catch((err) => {
-          if (!isMounted) return;
-          console.error('Stripe Init Error:', err);
-          setError(err.message || 'Unable to connect to payment server. Make sure your backend is running on port 5000.');
-        })
-        .finally(() => {
-          if (isMounted) setBusy(false);
-        });
-    } else {
-      setBusy(false);
-    }
-
-    return () => {
-      isMounted = false;
-    };
-  }, [method, total, cart.lines.length]);
-
-  const handleOrderSuccess = (orderId: string) => {
-    cart.clearCart();
-    navigate(`/orders/${orderId}?placed=true`, { replace: true });
-  };
-
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!cart.lines.length) return;
-
-    setBusy(true);
-    setError('');
-    const form = new FormData(event.currentTarget);
-
+    const key = localStorage.getItem(storageKey)
+    if (!key) return
+    let active = true
+    paymentApi.checkout(key).then(value => { if (active) setAttempt(value) }).catch(caught => {
+      if (active) setError(caught instanceof Error ? caught.message : 'Unable to recover checkout. Retry without paying again.')
+    }).finally(() => { if (active) setRecovering(false) })
+    return () => { active = false }
+  }, [storageKey])
+  const start = async (event: FormEvent) => {
+    event.preventDefault(); if (busy) return
+    setBusy(true); setError('')
     try {
-      const order = await orderApi.place({
-        restaurant: cart.lines[0].restaurantId,
-        items: cart.lines.map((line) => ({ menuItem: line.id, quantity: line.quantity })),
-        deliveryAddress: String(form.get('address')),
-        note: String(form.get('note')) || undefined,
-      });
-
-      if (method === 'wallet') {
-        throw new AppApiError('Foodie Wallet payments need a backend wallet endpoint and cannot be completed yet. Please choose cash on delivery or card.');
-      }
-
-      if (method === 'cash') {
-        handleOrderSuccess(order._id);
-      }
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to place your order.');
-    } finally {
-      if (method !== 'card') setBusy(false);
-    }
-  };
-
-  if (!cart.lines.length) {
-    return (
-      <div className="page container">
-        <div className="empty-state empty-state--large">
-          <ShoppingBag />
-          <h1>Your cart is empty</h1>
-          <p>Add a local favourite before checking out.</p>
-          <Link className="button button--primary" to="/restaurants">Browse restaurants</Link>
-        </div>
-      </div>
-    );
+      const key = localStorage.getItem(storageKey) ?? crypto.randomUUID()
+      // Save before the request so a lost response or reload reuses the same attempt.
+      localStorage.setItem(storageKey, key)
+      const value = await paymentApi.checkout(key, { restaurant: cart.lines[0]?.restaurantId ?? '',
+        items: cart.lines.map(line => ({ menuItem: line.id, quantity: line.quantity })), deliveryAddress: address, note })
+      setAttempt(value)
+    } catch (caught) { setError(caught instanceof Error ? caught.message : 'Unable to start checkout') }
+    finally { setBusy(false) }
   }
-
-  return (
-    <div className="page container">
-      <div className="page-title">
-        <span className="eyebrow">Almost there</span>
-        <h1>Checkout</h1>
-        <p>Review your delivery details and payment choice.</p>
-      </div>
-
-      {error && <div className="form-alert" role="alert">{error}</div>}
-
-      <form id="checkout-form" className="checkout-grid" onSubmit={(e) => void submit(e)}>
-        <section className="checkout-panel">
-          <h2><MapPin /> Delivery address</h2>
-          <div className="form-grid">
-            <label>Full name<input required defaultValue={user?.name} /></label>
-            <label>Phone<input required defaultValue={user?.phone} /></label>
-            <label className="full">
-              Delivery address
-              <textarea name="address" required defaultValue={user?.address} placeholder="House number, street, city" />
-            </label>
-            <label className="full">
-              Order notes
-              <textarea name="note" placeholder="Spice preference, landmark or delivery instructions" />
-            </label>
-          </div>
-        </section>
-
-        <section className="checkout-panel">
-          <h2><CreditCard /> Payment method</h2>
-          <div className="checkout-methods">
-            <label className={method === 'cash' ? 'selected' : ''}>
-              <input type="radio" name="payment" checked={method === 'cash'} onChange={() => setMethod('cash')} />
-              <Banknote />
-              <span>
-                <strong>Cash on delivery</strong>
-                <small>Pay your rider when the order arrives</small>
-              </span>
-            </label>
-
-            <label className={method === 'card' ? 'selected' : ''}>
-              <input type="radio" name="payment" checked={method === 'card'} onChange={() => setMethod('card')} />
-              <CreditCard />
-              <span>
-                <strong>Card payment</strong>
-                <small>Pay securely with Visa / Mastercard (LKR)</small>
-              </span>
-            </label>
-
-            <label className={method === 'wallet' ? 'selected' : ''}>
-              <input type="radio" name="payment" checked={method === 'wallet'} onChange={() => setMethod('wallet')} />
-              <WalletCards />
-              <span>
-                <strong>Foodie Wallet</strong>
-                <small>Not yet supported by the backend</small>
-              </span>
-            </label>
-          </div>
-
-          {method === 'card' && !stripeKey && (
-            <div className="form-alert" role="alert" style={{ marginTop: '1rem' }}>
-              Stripe publishable key is missing. Add VITE_STRIPE_PUBLISHABLE_KEY to the frontend .env file, then restart Vite.
-            </div>
-          )}
-
-          {method === 'card' && stripePromise && !clientSecret && !busy && !error && (
-            <p className="secure-note" style={{ marginTop: '1rem' }}>Preparing secure card payment…</p>
-          )}
-
-          {method === 'card' && clientSecret && stripePromise && (
-            <div style={{ marginTop: '1.5rem', padding: '1rem', background: '#f9fafb', borderRadius: '8px' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 'bold' }}>Enter Card Details</h3>
-              <Elements stripe={stripePromise} options={{ clientSecret }}>
-                <StripePaymentForm 
-                  clientSecret={clientSecret}
-                  busy={busy}
-                  setBusy={setBusy}
-                  onError={(msg) => setError(msg)}
-                  onSuccess={async () => {
-                    const form = new FormData(document.getElementById('checkout-form') as HTMLFormElement);
-                    try {
-                      const order = await orderApi.place({
-                        restaurant: cart.lines[0].restaurantId,
-                        items: cart.lines.map((line) => ({ menuItem: line.id, quantity: line.quantity })),
-                        deliveryAddress: String(form.get('address')),
-                        note: String(form.get('note')) || undefined,
-                      });
-                      await paymentApi.start(order._id);
-                      handleOrderSuccess(order._id);
-                    } catch (err) {
-                      setError('Payment succeeded but failed to save order.');
-                    }
-                  }}
-                />
-              </Elements>
-            </div>
-          )}
-
-          <div className="secure-note" style={{ marginTop: '1rem' }}>
-            <LockKeyhole /> Card payments are processed securely via Stripe Test Mode.
-          </div>
-        </section>
-
-        <aside className="summary-card checkout-summary">
-          <h2>Order summary</h2>
-          {cart.lines.map((line) => (
-            <div className="mini-line" key={line.id}>
-              <img src={line.image} alt={line.name} />
-              <span>{line.name}<small>Qty: {line.quantity}</small></span>
-              <b>{formatLkr(line.price * line.quantity)}</b>
-            </div>
-          ))}
-          <div className="summary-row"><span>Subtotal</span><b>{formatLkr(cart.subtotal)}</b></div>
-          <div className="summary-row"><span>Delivery</span><b>{formatLkr(delivery)}</b></div>
-          <div className="summary-total"><span>Total</span><strong>{formatLkr(total)}</strong></div>
-
-          {method !== 'card' && (
-            <button className="button button--primary button--full" disabled={busy || method === 'wallet'}>
-              {busy ? 'Placing order…' : 'Place order'}
-            </button>
-          )}
-        </aside>
-      </form>
-    </div>
-  );
+  const finish = async () => {
+    if (!attempt) return
+    setBusy(true); setError('')
+    try {
+      const order = await paymentApi.completeCheckout(attempt.checkoutId)
+      if (order.paymentStatus !== 'paid') throw new Error('Order payment has not been confirmed')
+      let cartWarning = false
+      try { await cart.clearCart(); localStorage.removeItem(storageKey) } catch { cartWarning = true }
+      navigate(`/orders/${order._id}?placed=true${cartWarning ? '&cartWarning=true' : ''}`, { replace: true })
+    } catch (caught) {
+      setError(`Payment may have succeeded, but the order is not yet confirmed. Retry saving this same checkout; do not pay again. ${caught instanceof Error ? caught.message : ''}`)
+    } finally { setBusy(false) }
+  }
+  if (recovering) return <div className="page container"><p>Recovering your saved checkout…</p></div>
+  if (!attempt && !cart.lines.length && !localStorage.getItem(storageKey)) return <div className="page container"><h1>Your cart is empty</h1><Link to="/restaurants">Browse restaurants</Link></div>
+  return <div className="page container"><div className="page-title"><h1>Checkout</h1><p>Stripe TEST MODE — no real money or bank payouts.</p></div>
+    {error && <p className="error-banner" role="alert">{error}</p>}
+    {cart.syncError && <p className="error-banner" role="alert">Cart: {cart.syncError}</p>}
+    {!testKey && <p className="error-banner">Stripe test payments are unavailable. A test publishable key must be configured by the project administrator.</p>}
+    <div className="checkout-grid"><section className="checkout-panel">
+      {!attempt ? <form onSubmit={event => void start(event)}><h2>Delivery details</h2><label>Delivery address<textarea required maxLength={1000} value={address} onChange={event => setAddress(event.target.value)} /></label><label>Order notes<textarea maxLength={1000} value={note} onChange={event => setNote(event.target.value)} /></label><button className="button button--primary" disabled={busy || !testKey}>{busy ? 'Preparing checkout…' : 'Continue / recover secure checkout'}</button></form>
+      : <><h2>Secure test payment</h2><p>Checkout reference: {attempt.checkoutId}</p><p>Deliver to: {attempt.quote.deliveryAddress}</p><p>Your order will appear only after payment is verified and the order is saved.</p>
+        {attempt.status === 'succeeded' ? <button className="button button--primary" disabled={busy} onClick={() => void finish()}>Payment received — save / recover order</button>
+        : stripePromise && <Elements stripe={stripePromise}><CardPayment attempt={attempt} finish={finish} busy={busy} setBusy={setBusy} onError={setError} /></Elements>}
+        <button type="button" className="button button--secondary" disabled={busy} onClick={() => void finish()}>Check payment and retry saving order</button>
+      </>}
+    </section><aside className="summary-card"><h2>Order summary</h2>{(attempt?.quote.items ?? cart.lines).map(item => <p key={'menuItem' in item ? item.menuItem : item.id}>{item.quantity} × {item.name} <strong>{formatLkr(item.price * item.quantity)}</strong></p>)}
+      <div className="summary-row"><span>Subtotal</span><b>{formatLkr(attempt?.quote.subtotal ?? cart.subtotal)}</b></div><div className="summary-row"><span>Delivery fee</span><b>{formatLkr(attempt?.quote.deliveryFee ?? 350)}</b></div><div className="summary-total"><span>Total</span><b>{formatLkr(attempt?.quote.totalAmount ?? cart.subtotal + 350)}</b></div><small>The backend validates menu items and calculates the payable total.</small></aside></div></div>
 }
