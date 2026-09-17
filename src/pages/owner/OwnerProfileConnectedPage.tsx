@@ -1,3 +1,4 @@
+import { CoordinateFields } from '../../components/CoordinateFields'
 import { Clock3, ImagePlus, MapPin, Store } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
 import { ErrorState, LoadingState } from '../../components/ui/AsyncState'
@@ -13,6 +14,7 @@ const loadSetup = async () => {
   return { restaurant, options }
 }
 const inputFor = (restaurant: ApiRestaurant | null): RestaurantInput => ({
+  latitude: restaurant?.latitude, longitude: restaurant?.longitude,
   name: restaurant?.name ?? '', category: restaurant?.category ?? '', description: restaurant?.description ?? '',
   phone: restaurant?.phone ?? '', address: restaurant?.address ?? '', imageUrl: restaurant?.imageUrl ?? '',
   isOpen: restaurant?.isOpen ?? false, operatingHours: restaurant?.operatingHours ?? {},
@@ -67,6 +69,7 @@ function RestaurantSetup({ restaurant, options }: { restaurant: ApiRestaurant | 
     for (const [day, hours] of Object.entries(form.operatingHours ?? {})) {
       if (!hours.closed && (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(hours.open) || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(hours.close) || hours.open === hours.close)) found[`operatingHours.${day}`] = 'Enter different opening and closing times.'
     }
+    if ((form.latitude === undefined) !== (form.longitude === undefined) || (form.latitude !== undefined && (!Number.isFinite(form.latitude) || Math.abs(form.latitude) > 90)) || (form.longitude !== undefined && (!Number.isFinite(form.longitude) || Math.abs(form.longitude) > 180))) found.latitude = 'Enter valid latitude and longitude together.'
     if (errors.imageUrl) found.imageUrl = errors.imageUrl
     setErrors(found); setMessage(''); setNotice('')
     if (Object.keys(found).length) { setMessage('Please check the highlighted fields.'); return }
@@ -105,7 +108,7 @@ function RestaurantSetup({ restaurant, options }: { restaurant: ApiRestaurant | 
             </div>
             <div className="restaurant-logo-upload"><div className="restaurant-logo-preview">{logo ? <img src={logo} alt="Restaurant logo preview" /> : <div><ImagePlus /><span>Your restaurant logo</span></div>}</div><div><label className="restaurant-upload-button"><ImagePlus />Upload Restaurant Logo<input type="file" accept=".jpg,.jpeg,.png,.webp" aria-label="Upload Restaurant Logo" onChange={e => { selectLogo(e.target.files?.[0]); e.target.value = '' }} /></label><p className="restaurant-helper">JPG, PNG or WebP ? up to {options.image.maxBytes / 1024 / 1024} MB. Your whole logo will stay visible.</p>{file && <p className="restaurant-selected-file">{file.name} <button type="button" onClick={() => { setFile(null); setPreview(''); setErrors(previous => ({ ...previous, imageUrl: '' })) }}>Cancel selection</button></p>}{fieldError('imageUrl')}{stage === 'uploading' && <p role="status">Uploading logo? {progress}%</p>}</div></div>
           </section>
-          <section className="portal-card"><h2><MapPin />Contact &amp; location</h2><div className="form-grid"><label>Phone<input type="tel" autoComplete="tel" value={form.phone} onChange={e => change('phone', e.target.value)} required aria-invalid={!!errors.phone} aria-describedby="error-phone" placeholder="0771234567" /><small className="restaurant-helper">Sri Lankan mobile or landline; +94 also accepted.</small>{fieldError('phone')}</label><label>Address<textarea value={form.address} onChange={e => change('address', e.target.value)} required maxLength={options.limits.address} autoComplete="street-address" rows={2} aria-invalid={!!errors.address} aria-describedby="error-address" placeholder="Street, area and city" />{fieldError('address')}</label></div></section>
+          <section className="portal-card"><h2><MapPin />Contact &amp; location</h2><div className="form-grid"><label>Phone<input type="tel" autoComplete="tel" value={form.phone} onChange={e => change('phone', e.target.value)} required aria-invalid={!!errors.phone} aria-describedby="error-phone" placeholder="0771234567" /><small className="restaurant-helper">Sri Lankan mobile or landline; +94 also accepted.</small>{fieldError('phone')}</label><label>Address<textarea value={form.address} onChange={e => change('address', e.target.value)} required maxLength={options.limits.address} autoComplete="street-address" rows={2} aria-invalid={!!errors.address} aria-describedby="error-address" placeholder="Street, area and city" />{fieldError('address')}</label></div><CoordinateFields label="Restaurant pickup location" value={form} onChange={point => { change('latitude', point.latitude); change('longitude', point.longitude) }} />{fieldError('latitude')}{fieldError('longitude')}</section>
         </div>
         <section className="portal-card restaurant-business"><h2><Clock3 />Business settings</h2><label className="restaurant-open-toggle"><span><strong>Open for orders</strong><small>Turn off to pause new orders.</small></span><input type="checkbox" checked={form.isOpen} onChange={e => change('isOpen', e.target.checked)} /></label>{fieldError('isOpen')}<h3>Operating hours</h3><p className="restaurant-helper">Add only the days you know. Unset days display ?Not specified?. A closing time before opening means the next day. Hours describe your schedule; the switch above controls orders.</p>
           <div className="restaurant-hours">{options.days.map(day => {

@@ -1,0 +1,7 @@
+.foodie-rider-map { min-width: 0; padding: 1rem; border: 1px solid currentColor; border-radius: 16px; color: inherit; background: inherit; }
+.foodie-rider-map h2 { margin-bottom: 1rem; }
+.foodie-map-canvas { height: clamp(320px, 55vh, 540px); width: 100%; border-radius: 12px; z-index: 0; }
+.foodie-map-canvas .leaflet-tooltip { color: #172117; background: #fff; border-color: #fff; font-weight: 700; }
+.foodie-route-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin: 1rem 0; }
+.foodie-map-actions { display: flex; flex-wrap: wrap; gap: .7rem; }
+.foodie-rider-map .error-banner { margin: .6rem 0; }

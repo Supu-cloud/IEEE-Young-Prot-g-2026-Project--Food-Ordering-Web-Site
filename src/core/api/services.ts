@@ -1,8 +1,8 @@
-import type { CheckoutAttempt, CheckoutInput } from '../types/api'
+import type { CheckoutAttempt, CheckoutInput, CheckoutResult } from '../types/api'
 import { restaurantChanged } from './restaurantRefresh'
 import type { RestaurantInput, RestaurantOptions } from '../types/api'
 import { apiClient } from './client'
-import type { AdminAnalytics, AdminApplication, AdminDashboard, AdminRestaurant, ApiCart, ApiEnvelope, ApiMenuItem, ApiOrder, ApiRestaurant, ApiUser, AuthPayload, DeliveryAssignment, DeliveryStatus, Earnings, OrderStatus, OwnerAnalytics, OwnerDashboardData, PageResult, PublicFeedback, PublicReview, RiderProfile, SalesAnalytics, UserRole } from '../types/api'
+import type { AdminAnalytics, AdminApplication, AdminDashboard, AdminRestaurant, ApiCart, ApiEnvelope, ApiMenuItem, ApiOrder, ApiRestaurant, ApiUser, AuthPayload, DeliveryAssignment, DeliveryStatus, Earnings, OrderStatus, OwnerAnalytics, OwnerDashboardData, PageResult, PublicFeedback, PublicReview, RiderProfile, SalesAnalytics, UserRole, UserPreferences } from '../types/api'
 
 const data = <T>(response: { data: ApiEnvelope<T> }) => response.data.data
 export const authApi = {
@@ -47,6 +47,7 @@ export const orderApi = {
   analytics: async () => data(await apiClient.get<ApiEnvelope<SalesAnalytics>>('/orders/analytics/sales')),
 }
 export const riderApi = {
+  route: async (id: string) => data(await apiClient.get<ApiEnvelope<import('../types/api').DeliveryRoute>>(`/deliveries/${id}/route`)),
   available: async () => data(await apiClient.get<ApiEnvelope<RiderProfile[]>>('/deliveries/available-riders')),
   assign: async (orderId: string, riderId: string) => data(await apiClient.post<ApiEnvelope<DeliveryAssignment>>(`/deliveries/orders/${orderId}/assign`, { riderId })),
   mine: async () => data(await apiClient.get<ApiEnvelope<DeliveryAssignment[]>>('/deliveries/my')),
@@ -56,12 +57,12 @@ export const riderApi = {
   availability: async (isAvailable: boolean) => data(await apiClient.patch<ApiEnvelope<unknown>>('/roles/rider/availability', { isAvailable })),
   profile: async (payload: { vehicleType: string; vehicleNumber: string; licenseNumber?: string; verificationDocuments?: string[] }) => data(await apiClient.put<ApiEnvelope<unknown>>('/roles/rider/profile', payload)),
 }
-export const profileApi = { get: async () => data(await apiClient.get<ApiEnvelope<ApiUser>>('/users/profile')), update: async (payload: Pick<ApiUser, 'name' | 'phone' | 'address'>) => data(await apiClient.put<ApiEnvelope<ApiUser>>('/users/profile', payload)) }
+export const profileApi = { get: async () => data(await apiClient.get<ApiEnvelope<ApiUser>>('/users/profile')), update: async (payload: Partial<Pick<ApiUser, 'name' | 'phone' | 'address'>> & { preferences?: UserPreferences }) => data(await apiClient.put<ApiEnvelope<ApiUser>>('/users/profile', payload)) }
 export const reviewApi = { featured: async () => data(await apiClient.get<ApiEnvelope<PublicReview[]>>('/reviews/featured')) }
 export const feedbackApi = { list: async () => data(await apiClient.get<ApiEnvelope<PublicFeedback[]>>('/feedbacks')) }
 export const paymentApi = {
   checkout: async (checkoutKey: string, payload?: CheckoutInput) => data(await apiClient.post<ApiEnvelope<CheckoutAttempt>>('/payments/checkout', { checkoutKey, ...payload })),
-  completeCheckout: async (id: string) => data(await apiClient.post<ApiEnvelope<ApiOrder>>(`/payments/checkout/${id}/complete`)),
+  completeCheckout: async (id: string) => data(await apiClient.post<ApiEnvelope<CheckoutResult>>(`/payments/checkout/${id}/complete`)),
   start: async (orderId: string) => data(await apiClient.post<ApiEnvelope<{ id: string; clientSecret?: string }>>(`/payments/orders/${orderId}/intent`)),
   confirm: async (orderId: string, paymentIntentId: string) => data(await apiClient.post<ApiEnvelope<ApiOrder>>(`/payments/orders/${orderId}/confirm`, { paymentIntentId })),
 }

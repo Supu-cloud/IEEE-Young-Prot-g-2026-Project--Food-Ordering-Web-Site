@@ -447,6 +447,13 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary-dark); b
   .portal--admin .restaurant-owner-assignment { grid-template-columns: 1fr 1fr; }
   .portal--admin .restaurant-owner-assignment label { grid-column: 1 / -1; }
 }
+[data-theme="dark"] { --background:#151814; --surface:#20251f; --text:#f2f5ef; --muted:#b9c1b5; --border:#394238; --primary-light:#445b32; --shadow-sm:0 3px 12px rgba(0,0,0,.24); --shadow-md:0 14px 40px rgba(0,0,0,.35); color-scheme:dark }
+[data-theme="dark"] body, [data-theme="dark"] .site-header { background:var(--background) }
+[data-theme="dark"] .site-header { background:rgba(21,24,20,.94) }
+[data-theme="dark"] .button--secondary, [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea { background:var(--surface); color:var(--text) }
+.preference-controls { display:flex; gap:8px; align-items:end; flex-wrap:wrap }
+.preference-controls label { display:grid; gap:3px; color:var(--muted); font-size:.72rem; font-weight:700 }
+.preference-controls select { min-width:110px; padding:7px 9px }
 
 /* Connected restaurant-owner workspace */
 .portal--owner{grid-template-columns:clamp(230px,16vw,270px) minmax(0,1fr)}
@@ -1150,6 +1157,38 @@ input,select,textarea{padding:14px 15px;font-size:1rem}
 .rider-dashboard-locked{min-height:520px;display:grid;justify-items:center;align-content:center;padding:45px;text-align:center;background:radial-gradient(circle at 50% 100%,rgba(159,200,92,.2),transparent 35%),white;border:1px solid var(--border);border-radius:22px}.rider-dashboard-locked>span{width:70px;height:70px;display:grid;place-items:center;color:#1d3d48;background:#e4f2f7;border-radius:20px}.rider-dashboard-locked>span svg{width:34px;height:34px}.rider-dashboard-locked>small{margin-top:20px;color:#61842b;font-weight:800;text-transform:uppercase;letter-spacing:.09em}.rider-dashboard-locked h1{margin:8px 0 6px;font-size:clamp(2rem,3vw,3rem)}.rider-dashboard-locked p{max-width:540px;margin:0 0 22px}
 @media(max-width:900px){.rider-profile-onboarding{grid-template-columns:1fr}.rider-onboarding-intro{min-height:0}.rider-setup-form{min-height:480px}}
 @media(max-width:560px){.rider-profile-onboarding{margin:0;border-radius:18px}.rider-onboarding-intro,.rider-setup-form{padding:25px 20px}.rider-onboarding-intro ul{margin-top:22px}.rider-setup-form{min-height:0}.rider-dashboard-locked{min-height:480px;padding:30px 20px}}
+
+/* Shared semantic theme tokens and dark surfaces. */
+:root {
+  --color-background: var(--background); --color-surface: var(--surface); --color-text: var(--text);
+  --color-text-muted: var(--muted); --color-border: var(--border); --color-primary: var(--primary-dark);
+  --color-card: var(--surface); --color-danger: var(--error); --color-success: #4f7d16;
+}
+[data-theme="dark"] {
+  --background: #111812; --surface: #1d271f; --text: #f1f5ee; --muted: #b6c1b5; --placeholder: #89978a;
+  --border: #3b4b3d; --primary: #a8d866; --primary-dark: #91c34b; --primary-light: #30462b;
+  --color-success: #a8d866;
+}
+[data-theme="dark"] body { background: var(--background); color: var(--text); }
+[data-theme="dark"] .site-header { background: rgba(17,24,18,.94); }
+[data-theme="dark"] .section--tint, [data-theme="dark"] .value-strip, [data-theme="dark"] .support-banner,
+[data-theme="dark"] .rider-active-card>footer { background: #172119; }
+[data-theme="dark"] .cuisine-card, [data-theme="dark"] .restaurant-card, [data-theme="dark"] .stats,
+[data-theme="dark"] .order-card, [data-theme="dark"] .tracking-card, [data-theme="dark"] .profile-card,
+[data-theme="dark"] .account-section, [data-theme="dark"] .account-nav, [data-theme="dark"] .empty-state,
+[data-theme="dark"] .portal-card, [data-theme="dark"] .rider-stat-grid article, [data-theme="dark"] .rider-active-card,
+[data-theme="dark"] .rider-profile-onboarding { background: var(--surface); color: var(--text); }
+[data-theme="dark"] .button--secondary, [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea { background: #253228; color: var(--text); border-color: var(--border); }
+[data-theme="dark"] .main-nav, [data-theme="dark"] .main-nav a.active, [data-theme="dark"] .main-nav a:hover { background: #1d271f; }
+[data-theme="dark"] .hero-section { background: radial-gradient(circle at 85% 15%, rgba(145,195,75,.24), transparent 32%), linear-gradient(135deg,#172219,#203324); }
+[data-theme="dark"] .availability, [data-theme="dark"] .status--confirmed, [data-theme="dark"] .status--delivered { color: #c9ed9b; background: #294022; }
+[data-theme="dark"] .status--preparing { color: #ffd28a; background: #4a351b; }
+[data-theme="dark"] .status--out-for-delivery { color: #a9d8f1; background: #19384a; }
+[data-theme="dark"] .status--cancelled, [data-theme="dark"] .error-banner { color: #ffb4b0; background: #4a2524; border-color: #78403d; }
+[data-theme="dark"] .success-banner { color: #c9ed9b; background: #294022; border-color: #527d32; }
+[data-theme="dark"] .foodie-map-canvas .leaflet-tooltip { color: var(--text); background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .rider-route-preview, [data-theme="dark"] .map-placeholder { background: #27372a; border-color: var(--border); }
+.profile-preferences { display: grid; gap: 12px; }
 
 /* Generated Foodie mask: larger, high-contrast brand treatment. */
 .brand-mark,.auth-brand>span,.admin-login-brand>span,.portal-brand>span{padding:0;background:var(--primary)}

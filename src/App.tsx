@@ -40,6 +40,7 @@ import { AdminAnalyticsPage } from './pages/admin/AdminAnalyticsPage'
 import { AdminReportsPage } from './pages/admin/AdminReportsPage'
 import { AdminProfilePage } from './pages/admin/AdminProfilePage'
 import { AdminLoginPage } from './pages/admin/AdminLoginPage'
+import { LegalPage } from './pages/LegalPage'
 
 function RoleAwareHome() {
   const { user, restoring } = useAuth()
@@ -69,6 +70,7 @@ export default function App() {
               <Route path="account" element={<AccountPage />} />
             </Route>
             <Route path="help" element={<NotFoundPage />} />
+            <Route path="legal/:topic" element={<LegalPage />} />
           </Route>
 
           {/* Guest Routes (Unauthenticated Users) */}

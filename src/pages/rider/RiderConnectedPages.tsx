@@ -1,4 +1,8 @@
-import { Check, Clock3, DollarSign, MapPin, Navigation, Package, Store } from 'lucide-react'
+import { RiderDeliveryActions } from './RiderDeliveryActions'
+import { OrderStatusBadge, orderStatusStyle, deliveryVisualStatus, mergeDelivery } from '../../components/OrderStatus'
+import { orderRefreshEvent } from '../../core/api/orderRefresh'
+import { RiderMap } from './RiderMapPanel'
+import { DollarSign, MapPin, Package, Store } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { riderApi } from '../../core/api/services'
@@ -7,12 +11,11 @@ import type { DeliveryAssignment, DeliveryStatus } from '../../core/types/api'
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/AsyncState'
 import { formatLkr } from '../../services/sriLankanData'
 
-const nextStatus: Partial<Record<DeliveryStatus, DeliveryStatus>> = { assigned: 'picked_up', accepted: 'picked_up', picked_up: 'out_for_delivery', out_for_delivery: 'delivered' }
 const statusLabel: Record<DeliveryStatus, string> = { assigned: 'Assigned', accepted: 'Accepted', picked_up: 'Picked up', out_for_delivery: 'Out for delivery', delivered: 'Delivered', failed: 'Could not deliver', rejected: 'Rejected' }
 const isFinished = (delivery: DeliveryAssignment) => ['delivered', 'failed', 'rejected'].includes(delivery.status)
 
 export function RiderConnectedJobs() {
-  const resource = useAsyncResource(riderApi.mine, 7000)
+  const resource = useAsyncResource(riderApi.mine, 7000, orderRefreshEvent)
   const [tab, setTab] = useState<'active' | 'completed'>('active')
   if (resource.loading) return <LoadingState label="Loading assigned deliveries..." />
   if (resource.error) return <ErrorState message={resource.error} retry={resource.retry} />
@@ -30,33 +33,28 @@ function DeliveryList({ deliveries }: { deliveries: DeliveryAssignment[] }) {
     const order = delivery.order
     const restaurant = typeof order.restaurant === 'string' ? null : order.restaurant
     const customer = typeof order.customer === 'string' ? 'Customer' : order.customer.name
-    return <article key={delivery._id}><div className="job-main"><div className="job-payout"><span>Delivery #{delivery.order._id.slice(-6).toUpperCase()}</span><strong>{formatLkr(delivery.payout)}</strong></div><div className="route-detail"><div><Store /><span><small>Pick up from</small><strong>{restaurant?.name ?? 'Restaurant'}</strong><em>{restaurant?.address ?? 'Address unavailable'}</em></span></div><i /><div><MapPin /><span><small>Deliver to</small><strong>{customer}</strong><em>{order.deliveryAddress}</em></span></div></div><div className="job-meta"><span><Package /> {order.items.length} items</span><span><Clock3 /> {statusLabel[delivery.status]}</span><span>{new Date(delivery.assignedAt).toLocaleString()}</span></div></div><div className="job-actions"><Link className="button button--primary" to={`/rider/deliveries/${delivery._id}`}>View details</Link></div></article>
+    return <article key={delivery._id} className="owner-order-card" data-status={delivery.status} style={orderStatusStyle(deliveryVisualStatus(delivery.status))}><div className="job-main"><div className="job-payout"><span>Delivery #{delivery.order._id.slice(-6).toUpperCase()}</span><strong>{formatLkr(delivery.payout)}</strong></div><div className="route-detail"><div><Store /><span><small>Pick up from</small><strong>{restaurant?.name ?? 'Restaurant'}</strong><em>{restaurant?.address ?? 'Address unavailable'}</em></span></div><i /><div><MapPin /><span><small>Deliver to</small><strong>{customer}</strong><em>{order.deliveryAddress}</em></span></div></div><div className="job-meta"><span><Package /> {order.items.length} items</span><OrderStatusBadge status={deliveryVisualStatus(delivery.status)} text={statusLabel[delivery.status]} /><span>{new Date(delivery.assignedAt).toLocaleString()}</span></div></div><div className="job-actions"><Link className="button button--primary" to={`/rider/deliveries/${delivery._id}`}>View Route</Link></div></article>
   })}</div>
 }
 
 export function RiderConnectedDetail() {
   const { id = '' } = useParams()
   const loader = useCallback(async () => { const deliveries = await riderApi.mine(); const found = deliveries.find((item) => item._id === id); if (!found) throw new Error('Delivery not found or is not assigned to your account.'); return found }, [id])
-  const resource = useAsyncResource(loader, 7000)
-  const [updating, setUpdating] = useState(false)
-  const [error, setError] = useState('')
+  const resource = useAsyncResource(loader, 7000, orderRefreshEvent)
   if (resource.loading) return <LoadingState label="Loading delivery details..." />
   if (resource.error || !resource.data) return <ErrorState message={resource.error || 'Delivery not found'} retry={resource.retry} />
   const delivery = resource.data
   const order = delivery.order
   const restaurant = typeof order.restaurant === 'string' ? null : order.restaurant
   const customer = typeof order.customer === 'string' ? null : order.customer
-  const next = nextStatus[delivery.status]
-  const update = async (status: DeliveryStatus) => { setUpdating(true); setError(''); try { await riderApi.status(delivery._id, status); await resource.retry() } catch (caught) { setError(caught instanceof Error ? caught.message : 'Unable to update delivery status.') } finally { setUpdating(false) } }
   return <>{resource.refreshError && <p className="error-banner" role="status">Refresh failed: {resource.refreshError}. Retrying automatically.</p>}
-    <div className="portal-title"><div><Link to="/rider/deliveries">&larr; Back to deliveries</Link><h1>Delivery #{delivery.order._id.slice(-6).toUpperCase()}</h1><p>{statusLabel[delivery.status]} &middot; {formatLkr(delivery.payout)} internal test earning — {order.settlement?.riderStatus ?? 'pending'}</p></div><span className={`delivery-status delivery-status--${delivery.status.replace('_', '-')}`}>{statusLabel[delivery.status]}</span></div>
-    {error && <p className="error-banner" role="alert">{error}</p>}
-    <div className="delivery-layout"><section className="delivery-map" aria-label="Delivery map placeholder"><div className="map-roads" /><span className="pickup-pin"><Store /></span><span className="dropoff-pin"><MapPin /></span><div className="route-line" /><p>Map navigation will be available here.</p></section><aside className="delivery-steps"><div className="delivery-step active"><span>1</span><div><small>Pickup</small><h2>{restaurant?.name ?? 'Restaurant'}</h2><p>{restaurant?.address ?? 'Address unavailable'}</p><ul>{order.items.map((item) => <li key={item.menuItem}>{item.quantity}x {item.name}</li>)}</ul><button type="button" className="button button--secondary button--full"><Navigation /> Open navigation</button></div></div><div className="delivery-step active"><span>2</span><div><small>Drop-off</small><h2>{customer?.name ?? 'Customer'}</h2><p>{order.deliveryAddress}</p>{customer?.phone && <p>{customer.phone}</p>}</div></div><div className="delivery-primary-action">{delivery.status === 'assigned' && <button type="button" disabled={updating} onClick={() => void update('rejected')}>Reject assignment</button>}{next && <button type="button" disabled={updating} onClick={() => void update(next)}>{updating ? 'Updating...' : next === 'accepted' ? 'Accept delivery' : next === 'picked_up' ? 'Mark as picked up' : next === 'out_for_delivery' ? 'Start delivery' : 'Mark as delivered'} <Check /></button>}{['accepted', 'picked_up', 'out_for_delivery'].includes(delivery.status) && <button type="button" className="button button--secondary" disabled={updating} onClick={() => void update('failed')}>{updating ? 'Updating...' : 'Could not deliver'}</button>}</div></aside></div>
+    <div className="portal-title"><div><Link to="/rider/deliveries">&larr; Back to deliveries</Link><h1>Delivery #{delivery.order._id.slice(-6).toUpperCase()}</h1><p>{statusLabel[delivery.status]} &middot; {formatLkr(delivery.payout)} internal test earning — {order.settlement?.riderStatus ?? 'pending'}</p></div><OrderStatusBadge status={deliveryVisualStatus(delivery.status)} text={statusLabel[delivery.status]} /></div>
+    <div className="delivery-layout"><RiderMap key={delivery._id} deliveryId={delivery._id} /><aside className="delivery-steps owner-order-card" data-status={delivery.status} style={orderStatusStyle(deliveryVisualStatus(delivery.status))}><div className="delivery-step active"><span>1</span><div><small>Pickup</small><h2>{restaurant?.name ?? 'Restaurant'}</h2><p>{restaurant?.address ?? 'Address unavailable'}</p><ul>{order.items.map((item) => <li key={item.menuItem}>{item.quantity}x {item.name}</li>)}</ul></div></div><div className="delivery-step active"><span>2</span><div><small>Drop-off</small><h2>{customer?.name ?? 'Customer'}</h2><p>{order.deliveryAddress}</p>{customer?.phone && <p>{customer.phone}</p>}</div></div><RiderDeliveryActions delivery={delivery} onConfirmed={updated => { resource.commit(current => current ? mergeDelivery(current, updated) : current); void resource.retry() }} /></aside></div>
   </>
 }
 
 export function RiderConnectedEarnings() {
-  const resource = useAsyncResource(riderApi.earnings, 7000)
+  const resource = useAsyncResource(riderApi.earnings, 7000, orderRefreshEvent)
   const trips = useMemo(() => resource.data?.trips ?? [], [resource.data])
   if (resource.loading) return <LoadingState label="Calculating rider earnings..." />
   if (resource.error || !resource.data) return <ErrorState message={resource.error || 'Earnings unavailable'} retry={resource.retry} />
