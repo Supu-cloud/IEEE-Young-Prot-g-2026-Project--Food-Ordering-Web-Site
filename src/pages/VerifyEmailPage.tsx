@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { CheckCircle2, XCircle } from 'lucide-react';
+import { environment } from '../core/config/environment';
 
 export function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
@@ -13,7 +14,7 @@ export function VerifyEmailPage() {
     const token = searchParams.get('token');
     if (token) {
       axios
-        .get(`http://localhost:5000/api/auth/verify-email?token=${token}`)
+        .get(`${environment.apiBaseUrl}/auth/verify-email?token=${token}`)
         .then((res) => {
           setIsSuccess(true);
           setMessage(res.data.message || 'Email verified successfully!');
