@@ -23,7 +23,7 @@ export type MenuItem = {
   popular?: boolean
 }
 
-export type CartLine = MenuItem & { quantity: number }
+export type CartLine = MenuItem & { quantity: number; restaurantName?: string }
 
 export type OrderStatus = 'Confirmed' | 'Preparing' | 'Out for Delivery' | 'Delivered' | 'Cancelled'
 

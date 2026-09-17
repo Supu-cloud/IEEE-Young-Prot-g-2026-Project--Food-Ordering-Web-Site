@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-export function useAsyncResource<T>(loader: () => Promise<T>, pollMs = 0) {
+export function useAsyncResource<T>(loader: () => Promise<T>, pollMs = 0, refreshEvent?: string) {
   const [data, setData] = useState<T | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -37,12 +37,18 @@ export function useAsyncResource<T>(loader: () => Promise<T>, pollMs = 0) {
         }
       }
     }
+    const refresh = () => { void load() }
+    if (refreshEvent) window.addEventListener(refreshEvent, refresh)
     loadRef.current = load
     // Start synchronization with the external API; cleanup prevents stale writes.
     void load()
-    return () => { active = false; clearTimeout(timer) }
-  }, [loader, pollMs])
+    return () => { active = false; clearTimeout(timer); if (refreshEvent) window.removeEventListener(refreshEvent, refresh) }
+  }, [loader, pollMs, refreshEvent])
   const retry = useCallback(() => loadRef.current(), [])
+  // Invalidate older polls before applying a backend-confirmed mutation.
+  const commit = useCallback((update: (current: T | null) => T | null) => {
+    ++sequence.current; setData(update); setRefreshError('');
+  }, [])
   return { data: source === loader ? data : null, loading: loading || source !== loader,
-    error: source === loader ? error : '', refreshError: source === loader ? refreshError : '', retry, setData }
+    error: source === loader ? error : '', refreshError: source === loader ? refreshError : '', retry, setData, commit }
 }

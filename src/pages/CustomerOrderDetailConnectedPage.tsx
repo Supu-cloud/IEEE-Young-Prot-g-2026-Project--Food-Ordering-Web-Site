@@ -1,3 +1,5 @@
+import { OrderStatusBadge, orderStatusStyle } from '../components/OrderStatus'
+import { orderRefreshEvent } from '../core/api/orderRefresh'
 import { useCallback, useState, type FormEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { orderApi } from '../core/api/services'
@@ -6,6 +8,7 @@ import { useAsyncResource } from '../core/api/useAsyncResource'
 import { ErrorState, LoadingState } from '../components/ui/AsyncState'
 import { formatLkr } from '../services/sriLankanData'
 
+const statuses = ['placed', 'confirmed', 'preparing', 'ready_for_pickup', 'rider_assigned', 'picked_up', 'out_for_delivery', 'delivered']
 const steps: Array<{ label: string; field: keyof ApiOrder }> = [
   { label: 'Order Placed', field: 'placedAt' }, { label: 'Confirmed', field: 'confirmedAt' },
   { label: 'Preparing', field: 'preparingAt' }, { label: 'Ready for Pickup', field: 'readyForPickupAt' },
@@ -36,7 +39,7 @@ function ReceiptConfirmation({ order, onSaved }: { order: ApiOrder; onSaved: () 
 export function CustomerOrderDetailConnectedPage() {
   const { orderId = '' } = useParams(); const [params] = useSearchParams()
   const loader = useCallback(() => orderApi.get(orderId), [orderId])
-  const resource = useAsyncResource(loader, 7000)
+  const resource = useAsyncResource(loader, 7000, orderRefreshEvent)
   const [actionError, setActionError] = useState(''); const [busy, setBusy] = useState(false)
   if (resource.loading) return <LoadingState label="Loading your order…" />
   if (resource.error || !resource.data) return <ErrorState message={resource.error || 'Order not found'} retry={resource.retry} />
@@ -44,14 +47,18 @@ export function CustomerOrderDetailConnectedPage() {
   const restaurant = typeof order.restaurant === 'string' ? null : order.restaurant
   const rider = typeof order.deliveryRider === 'string' ? null : order.deliveryRider
   const cancel = async () => { setBusy(true); setActionError(''); try { await orderApi.cancel(order._id); await resource.retry() } catch (caught) { setActionError(caught instanceof Error ? caught.message : 'Unable to cancel order') } finally { setBusy(false) } }
-  return <div className="page container"><div className="page-title"><Link to="/orders">Back to orders</Link><h1>Order #{order._id.slice(-6).toUpperCase()}</h1><p>Full order reference: {order._id}</p><p>{restaurant?.name} · {order.status.replaceAll('_', ' ')}</p></div>
+  return <div className="page container"><div className="page-title"><Link to="/orders">Back to orders</Link><h1>Order #{order._id.slice(-6).toUpperCase()}</h1><p>Full order reference: {order._id}</p>{order.checkoutId && <p>Checkout reference: {order.checkoutId}. This timeline and total apply to this restaurant order.</p>}<p>{restaurant?.name} · {order.status.replaceAll('_', ' ')}</p></div>
     {resource.refreshError && <p className="error-banner" role="status">Refresh failed: {resource.refreshError}. Showing last loaded status; retrying automatically.</p>}
     {params.has('cartWarning') && <p className="error-banner">Your paid order is saved, but the cart could not be cleared. Return to checkout to recover this order and retry cart cleanup; do not pay again.</p>}
     {actionError && <p className="error-banner" role="alert">{actionError}</p>}
     {['cancelled', 'declined', 'delivery_failed'].includes(order.status) && <p className="error-banner">This order is {order.status.replaceAll('_', ' ')}. {order.paymentStatus === 'paid' && 'Payment remains recorded; contact support for a Stripe test refund. No earnings are available.'}</p>}
-    <section className="tracking-card"><h2>Order progress</h2><ol className="order-timeline">{steps.map(({ label, field }) => {
+    <section className="tracking-card owner-order-card" data-status={order.status} style={orderStatusStyle(order.status)}><h2>Order progress</h2><p role="status">Current status: <OrderStatusBadge status={order.status} />. Updates automatically every 7 seconds.</p><button className="button button--secondary" onClick={() => void resource.retry()}>Refresh tracking</button><ol className="order-timeline">{steps.map(({ label, field }, index) => {
       const reached = order[field] ?? (field === 'placedAt' ? order.createdAt : undefined)
-      return <li className={reached ? 'complete' : ''} key={field}><span>{reached ? '✓' : '○'}</span><div><strong>{label}</strong><small>{typeof reached === 'string' ? new Date(reached).toLocaleString() : 'Not reached'}</small></div></li>
+      const current = order.status === statuses[index]
+      const date = typeof reached === 'string' ? new Date(reached) : null
+      const validDate = date && !Number.isNaN(date.getTime())
+      const ended = ['cancelled', 'declined', 'delivery_failed'].includes(order.status)
+      return <li aria-current={current ? 'step' : undefined} className={validDate || current ? 'complete' : ''} key={field}><span>{reached ? '✓' : '○'}</span><div><strong>{label}{current ? ' - Current' : ''}</strong><small>{validDate ? date.toLocaleString() : current ? 'Timestamp unavailable' : ended ? 'Not completed' : 'Awaiting update'}</small></div></li>
     })}</ol><div className="detail-panels"><div><h3>Payment and items</h3><p>Payment: {order.paymentStatus}</p>{order.items.map(item => <p key={item.menuItem}>{item.quantity} × {item.name} — {formatLkr(item.price * item.quantity)}</p>)}<p>Delivery fee: {formatLkr(order.deliveryFee)}</p><strong>Total: {formatLkr(order.totalAmount)}</strong></div>
       <div><h3>Delivery details</h3><p>{order.deliveryAddress}</p><p>Rider: {rider?.name ?? (order.deliveryRider ? 'Assigned rider' : 'Awaiting assignment')}</p>{rider?.phone && <p>{rider.phone}</p>}</div></div>
       {order.status === 'placed' && <button className="button button--secondary" disabled={busy} onClick={() => void cancel()}>Cancel order</button>}

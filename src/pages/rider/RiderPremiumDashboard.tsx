@@ -1,3 +1,5 @@
+import { orderRefreshEvent } from '../../core/api/orderRefresh'
+import { RiderMap } from './RiderMapPanel'
 import { ArrowRight, Bike, CheckCircle2, Clock3, DollarSign, Headphones, MapPin, Navigation, Package, Phone, Power, Route, ShieldCheck, Sparkles, Store, TrendingUp } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -14,7 +16,8 @@ export function RiderPremiumDashboard() {
     startOfToday.setHours(0, 0, 0, 0)
     return Promise.all([riderApi.mine(), riderApi.earnings(), riderApi.earnings(startOfToday.toISOString()), riderApi.getProfile()])
   }, [])
-  const resource = useAsyncResource(loader, 7000)
+  const resource = useAsyncResource(loader, 7000, orderRefreshEvent)
+  const [showMap, setShowMap] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
 
@@ -60,8 +63,8 @@ export function RiderPremiumDashboard() {
 
     <section className="rider-dashboard-grid">
       <article className="rider-active-card">
-        <header><div><span className="rider-section-icon"><Navigation /></span><div><small>Live assignment</small><h2>{current ? `Delivery #${current.order._id.slice(-6).toUpperCase()}` : 'Ready for your next route'}</h2></div></div>{current && <b className={`delivery-status delivery-status--${current.status.replace('_', '-')}`}>{current.status.replace('_', ' ')}</b>}</header>
-        {current ? <><ol className="rider-route-progress" aria-label="Delivery progress">{deliverySteps.map((step, index) => <li className={index < stageIndex ? 'complete' : index === stageIndex ? 'active' : ''} key={step}><span>{index < stageIndex ? <CheckCircle2 /> : index + 1}</span><small>{step}</small></li>)}</ol><div className="rider-route-preview"><div className="map-roads" /><span className="rider-map-pin rider-map-pin--pickup"><Store /></span><span className="rider-map-pin rider-map-pin--dropoff"><MapPin /></span><i /><div className="rider-route-distance"><Navigation /><span><strong>Route ready</strong><small>Open delivery details for navigation</small></span></div></div><div className="rider-route-details"><div><span><Store /></span><p><small>Pick up from</small><strong>{restaurant?.name ?? 'Restaurant'}</strong><em>{restaurant?.address ?? 'Address available in delivery details'}</em></p></div><i /><div><span><MapPin /></span><p><small>Deliver to</small><strong>{customer?.name ?? 'Customer'}</strong><em>{current.order.deliveryAddress}</em></p></div></div><footer><div><span><Package /> {current.order.items.length} items</span><span><DollarSign /> {formatLkr(current.payout)} internal test earning</span><span><Clock3 /> Assigned {new Date(current.assignedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div><Link className="button button--primary" to={`/rider/deliveries/${current._id}`}>Open delivery <ArrowRight /></Link></footer></> : <div className="rider-no-route"><span><Bike /></span><h2>No active delivery</h2><p>Stay online and your next assigned route will appear here automatically.</p><Link className="button button--primary" to="/rider/deliveries">View delivery queue</Link></div>}
+        <header><div><span className="rider-section-icon"><Navigation /></span><div><small>Current Delivery</small><h2>{current ? `Delivery #${current.order._id.slice(-6).toUpperCase()}` : 'Ready for your next route'}</h2></div></div>{current && <b className={`delivery-status delivery-status--${current.status.replace('_', '-')}`}>{current.status.replace('_', ' ')}</b>}</header>
+        {current ? <><ol className="rider-route-progress" aria-label="Delivery progress">{deliverySteps.map((step, index) => <li className={index < stageIndex ? 'complete' : index === stageIndex ? 'active' : ''} key={step}><span>{index < stageIndex ? <CheckCircle2 /> : index + 1}</span><small>{step}</small></li>)}</ol><button type="button" className="button button--secondary" aria-expanded={showMap} onClick={() => setShowMap(value => !value)}>{showMap ? 'Hide Route' : 'View Route'}</button>{showMap && <RiderMap key={current._id} deliveryId={current._id} />}<div className="rider-route-details"><div><span><Store /></span><p><small>Pick up from</small><strong>{restaurant?.name ?? 'Restaurant'}</strong><em>{restaurant?.address ?? 'Address available in delivery details'}</em></p></div><i /><div><span><MapPin /></span><p><small>Deliver to</small><strong>{customer?.name ?? 'Customer'}</strong><em>{current.order.deliveryAddress}</em></p></div></div><footer><div><span><Package /> {current.order.items.length} items</span><span><DollarSign /> {formatLkr(current.payout)} internal test earning</span><span><Clock3 /> Assigned {new Date(current.assignedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div><Link className="button button--primary" to={`/rider/deliveries/${current._id}`}>View Route <ArrowRight /></Link></footer></> : <div className="rider-no-route"><span><Bike /></span><h2>No active delivery</h2><p>Stay online and your next assigned route will appear here automatically.</p><Link className="button button--primary" to="/rider/deliveries">View delivery queue</Link></div>}
       </article>
 
       <aside className="rider-side-stack">

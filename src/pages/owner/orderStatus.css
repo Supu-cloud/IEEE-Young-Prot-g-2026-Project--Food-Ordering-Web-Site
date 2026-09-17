@@ -1,0 +1,32 @@
+.owner-order-card {
+  --order-surface: #fff;
+  --order-text: #172033;
+  --order-muted: #4b5563;
+  --order-chip-text: var(--order-ink);
+  border: 1px solid color-mix(in srgb, var(--order-color) 30%, #d1d5db);
+  border-left: 5px solid var(--order-color);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--order-color) 6%, var(--order-surface));
+  color: var(--order-text);
+  padding: 16px;
+}
+.owner-order-card h3, .owner-order-card h2 { color: var(--order-text); }
+.owner-order-card p, .owner-order-card small, .owner-order-card ul { color: var(--order-muted); }
+.owner-order-status { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 99px; font-size: .78rem; font-weight: 700; color: var(--order-chip-text, var(--order-ink)); background: color-mix(in srgb, var(--order-color) 14%, var(--order-chip-surface, #fff)); }
+.owner-order-status svg { flex-shrink: 0; color: var(--order-color); }
+.owner-order-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.owner-order-action { display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex: 1; padding: 11px 14px; min-height: 44px; border: 2px solid var(--order-color); border-radius: 8px; color: #101827; background: var(--order-color); font-weight: 700; }
+.owner-order-action[data-target="declined"], .owner-order-action[data-target="delivery_failed"] { color: #fff; background: var(--order-ink); }
+.owner-order-action:disabled { opacity: .65; cursor: wait; }
+.owner-order-action:focus-visible { outline: 3px solid var(--order-color); outline-offset: 3px; }
+.owner-order-spinner { animation: owner-order-spin 1s linear infinite; }
+@keyframes owner-order-spin { to { transform: rotate(360deg); } }
+.compact-orders a.owner-order-card { margin-bottom: 8px; padding: 16px; }
+.compact-orders a.owner-order-card > .owner-order-status { display: inline-flex; }
+[data-theme="dark"] .owner-order-card, .dark .owner-order-card { --order-surface: #171e2c; --order-text: #f3f4f6; --order-muted: #cbd5e1; --order-chip-text: #f3f4f6; }
+[data-theme="dark"] .owner-order-status, .dark .owner-order-status { --order-chip-text: #f3f4f6; --order-chip-surface: #171e2c; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .owner-order-card { --order-surface: #171e2c; --order-text: #f3f4f6; --order-muted: #cbd5e1; --order-chip-text: #f3f4f6; }
+  :root:not([data-theme="light"]) .owner-order-status { --order-chip-text: #f3f4f6; --order-chip-surface: #171e2c; }
+}
+@media (max-width: 430px) { .compact-orders .owner-order-status { grid-column: 1 / -1; } }
