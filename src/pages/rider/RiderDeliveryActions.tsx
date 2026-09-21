@@ -29,9 +29,9 @@ export function RiderDeliveryActions({ delivery, onConfirmed }: { delivery: Deli
     finally { locked.current = false; setPending(null) }
   }
   const blocked = pending !== null || confirmation !== null
-  return <>{error && <p role="alert" className="error-banner">{error}</p>}<div className="rider-action-row">
-    {next && <button type="button" className={next === 'delivered' ? 'rider-success' : 'rider-progress'} disabled={blocked} aria-busy={pending === next} onClick={() => void update(next)}>{pending === next ? <LoaderCircle className="owner-order-spinner" /> : next === 'delivered' ? <Check /> : <Truck />}{pending === next ? 'Saving…' : next === 'picked_up' ? 'Mark picked up' : next === 'out_for_delivery' ? 'Start delivery' : 'Mark as Delivered'}</button>}
+  return <>{error && <p role="alert" className="error-banner">{error}</p>}<div className="rider-action-row" role="group" aria-label="Delivery actions">
+    {next && <button type="button" className="rider-action-primary" disabled={blocked} aria-busy={pending === next} onClick={() => void update(next)}>{pending === next ? <LoaderCircle className="owner-order-spinner" /> : next === 'delivered' ? <Check /> : <Truck />}{pending === next ? 'Saving…' : next === 'picked_up' ? 'Mark picked up' : next === 'out_for_delivery' ? 'Start delivery' : 'Mark as Delivered'}</button>}
     {['assigned', 'accepted', 'picked_up', 'out_for_delivery'].includes(delivery.status) && <button type="button" className="rider-failure" disabled={blocked} aria-busy={pending === 'failed'} onClick={() => setConfirmation('failed')}>{pending === 'failed' ? <LoaderCircle className="owner-order-spinner" /> : <TriangleAlert />}{pending === 'failed' ? 'Saving…' : 'Could Not Deliver'}</button>}
-    {delivery.status === 'assigned' && <button type="button" className="rider-failure" disabled={blocked} onClick={() => setConfirmation('rejected')}>Reject assignment</button>}
+    {delivery.status === 'assigned' && <button type="button" className="rider-failure rider-reject" disabled={blocked} onClick={() => setConfirmation('rejected')}><TriangleAlert />Reject assignment</button>}
   </div>{confirmation && <FailureConfirmation rejected={confirmation === 'rejected'} onCancel={() => setConfirmation(null)} onConfirm={() => { const status = confirmation; setConfirmation(null); void update(status) }} />}</>
 }

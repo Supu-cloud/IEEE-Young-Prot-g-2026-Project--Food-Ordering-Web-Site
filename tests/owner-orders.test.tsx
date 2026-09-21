@@ -82,3 +82,12 @@ it('ignores an older poll that completes after the backend-confirmed mutation', 
   await act(async () => finishPoll([fixture('placed')]))
   expectStatus('confirmed', '#3B82F6')
 })
+
+it('links only ready, unassigned orders to the existing rider selector', async () => {
+  saved = [fixture('ready_for_pickup'), { ...fixture('ready_for_pickup', 'assigned'), deliveryRider: 'rider1' }, fixture('preparing', 'preparing')]
+  await render()
+  expect(card().querySelector('a.button')?.textContent).toBe('Assign rider')
+  expect(card().querySelector('a.button')?.getAttribute('href')).toBe('/owner/orders/order1')
+  expect(container.querySelector('[data-order-id="assigned"] a.button')).toBeNull()
+  expect(container.querySelector('[data-order-id="preparing"] a.button')).toBeNull()
+})

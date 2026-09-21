@@ -56,7 +56,10 @@ describe('real Leaflet delivery map', () => {
     const value = fixture(); value.route = null; value.errors = [{ code: 'ROUTING_UNAVAILABLE', message: 'Routing service is temporarily unavailable.' }]
     await render(value)
     expect(container.querySelectorAll('.leaflet-interactive')).toHaveLength(2)
-    expect(container.textContent).toContain('Routing service is temporarily unavailable.')
+    expect(container.textContent).toContain('Route estimate is unavailable right now.')
+    const retry = [...container.querySelectorAll('button')].find(item => item.textContent === 'Retry route')!
+    await act(async () => retry.click())
+    expect(riderApi.route).toHaveBeenCalledTimes(2)
     const navigation = [...container.querySelectorAll('a')].find(item => item.textContent === 'Start Navigation')!
     expect(navigation.href).toContain('6.8,79.9')
   })

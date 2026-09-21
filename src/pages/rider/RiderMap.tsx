@@ -40,7 +40,9 @@ export function RiderMap({ deliveryId }: { deliveryId: string }) {
     {resource.loading && <p role="status">Loading delivery route…</p>}
     {resource.refreshError && <p role="alert">{resource.refreshError}</p>}
     {resource.error && <p role="alert">{resource.error}</p>}
-    {data?.errors.map(error => <p className="error-banner" role="alert" key={error.code}>{error.message}</p>)}
+    {data?.errors.map(error => ['ROUTING_UNAVAILABLE', 'ROUTING_TIMEOUT', 'ROUTING_NOT_CONFIGURED', 'INVALID_ROUTE', 'NO_ROUTE'].includes(error.code)
+      ? <p className="foodie-route-notice" role="status" key={error.code}>Route estimate is unavailable right now. The map and navigation links still work; you can retry the route shortly.</p>
+      : <p className="error-banner" role="alert" key={error.code}>{error.message}</p>)}
     {data?.errors.some(error => error.code === 'RESTAURANT_LOCATION_MISSING' || error.code === 'CUSTOMER_LOCATION_MISSING') && <p role="note">This delivery may have been created before map locations were saved. Update the restaurant location, select the customer delivery point, and create a fresh order; existing orders are never assigned guessed coordinates.</p>}
     {points.length > 0 ? <MapContainer bounds={points} boundsOptions={{ padding: [48, 48], maxZoom: 16 }} className="foodie-map-canvas" scrollWheelZoom={false}>
       <TileLayer url={mapConfig.tileUrl} attribution={mapConfig.attribution} maxZoom={mapConfig.maxZoom} />

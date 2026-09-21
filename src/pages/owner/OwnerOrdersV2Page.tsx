@@ -35,6 +35,7 @@ export function OwnerOrdersV2Page() {
           resource.commit(current => current?.map(item => item._id === updated._id ? mergeConfirmedOrder(item, updated) : item) ?? null)
           void resource.retry()
         }} />
+        {order.status === 'ready_for_pickup' && !order.deliveryRider && <Link className="button button--primary" to={`/owner/orders/${order._id}`}>Assign rider</Link>}
       </article>)}{!items.length && <p className="column-empty">Nothing here right now.</p>}</div></section>
     })}</div>}
   </>
