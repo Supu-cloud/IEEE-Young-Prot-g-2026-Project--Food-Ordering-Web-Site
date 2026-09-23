@@ -12,7 +12,7 @@ import { Link, useParams } from 'react-router-dom'
 
 import { FoodCard } from '../components/FoodCard'
 import { ErrorState, LoadingState } from '../components/ui/AsyncState'
-import { restaurantImageUrl } from '../core/api/imageUrl'
+import { resolveImageUrl } from '../core/api/imageUrl'
 import { useFoodCatalogue } from '../hooks/useFoodCatalogue'
 import { formatLkr } from '../services/sriLankanData'
 import { useCart } from '../store/CartContext'
@@ -68,7 +68,7 @@ export function FoodDetailsPage() {
   }
 
   const resolvedImage =
-    restaurantImageUrl(dish.imageUrl) ||
+    resolveImageUrl(dish.imageUrl) ||
     '/images/food/sri_lankan_feast.jpg'
 
   const add = () => {

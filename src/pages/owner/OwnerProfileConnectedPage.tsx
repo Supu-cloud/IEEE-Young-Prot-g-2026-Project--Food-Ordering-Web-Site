@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { ErrorState, LoadingState } from '../../components/ui/AsyncState'
 import { ownerApi, restaurantApi } from '../../core/api/services'
 import { AppApiError } from '../../core/api/apiError'
-import { restaurantImageUrl } from '../../core/api/imageUrl'
+import { resolveImageUrl } from '../../core/api/imageUrl'
 import { useAsyncResource } from '../../core/api/useAsyncResource'
 import type { ApiRestaurant, RestaurantInput, RestaurantOptions } from '../../core/types/api'
 import './restaurantSetup.css'
@@ -92,7 +92,7 @@ function RestaurantSetup({ restaurant, options }: { restaurant: ApiRestaurant | 
       setMessage(caught instanceof Error ? caught.message : 'Unable to save. Please try again.')
     } finally { setStage('idle') }
   }
-  const logo = file && preview ? preview : restaurantImageUrl(form.imageUrl)
+  const logo = file && preview ? preview : resolveImageUrl(form.imageUrl)
   return <>
     <div className="portal-title"><div><span className="eyebrow">Your Foodie storefront</span><h1>My Restaurant</h1><p>{current ? 'Keep your details fresh and help customers find you.' : 'Welcome! Let?s introduce your restaurant to Foodie.'}</p></div><span className={`restaurant-status ${form.isOpen ? 'is-open' : ''}`}>{form.isOpen ? 'Open for orders' : 'Currently closed'}</span></div>
     {message && <p className="error-banner" role="alert">{message}</p>}

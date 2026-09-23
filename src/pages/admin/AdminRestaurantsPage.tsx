@@ -1,3 +1,4 @@
+import { resolveImageUrl } from '../../core/api/imageUrl'
 import { Search, Store, UserRoundCheck, UserRoundX } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { AdminFilterBar, money } from '../../components/admin/AdminUi'
@@ -10,7 +11,7 @@ function RestaurantLogo({ src, name }: { src?: string; name: string }) {
   const showImage = Boolean(src) && !failed
 
   return <span className={`restaurant-admin-logo${showImage ? '' : ' restaurant-admin-logo--fallback'}`} aria-label={`${name} logo`}>
-    {showImage ? <img loading="lazy" src={src} alt={`${name} logo`} onError={() => setFailed(true)} /> : <Store aria-hidden="true" />}
+    {showImage ? <img loading="lazy" src={resolveImageUrl(src)} alt={`${name} logo`} onError={() => setFailed(true)} /> : <Store aria-hidden="true" />}
   </span>
 }
 

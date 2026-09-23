@@ -1,3 +1,4 @@
+import { resolveImageUrl } from '../core/api/imageUrl'
 import { Package, RotateCcw, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -34,7 +35,7 @@ export function CustomerOrdersConnectedPage() {
     {!orders.length ? <EmptyState title={`No ${groups[tab].label.toLowerCase()} orders`} message="When an order reaches this stage, it will appear here." /> : <section className="order-list">{orders.map(order => {
       const restaurant = typeof order.restaurant === 'string' ? null : order.restaurant
       return <article className="order-card owner-order-card" key={order._id} data-order-id={order._id} data-status={order.status} style={orderStatusStyle(order.status)}>
-        {restaurant?.imageUrl ? <img src={restaurant.imageUrl} alt={restaurant.name} /> : <span className="order-image-fallback"><Package /></span>}
+        {restaurant?.imageUrl ? <img src={resolveImageUrl(restaurant.imageUrl)} alt={restaurant.name} /> : <span className="order-image-fallback"><Package /></span>}
         <div className="order-name"><strong>Order #{order._id.slice(-6).toUpperCase()}</strong><span>{restaurant?.name ?? 'Foodie restaurant'}</span><small>{order.checkoutId && `Checkout ${order.checkoutId.slice(-6)} - `}{new Date(order.createdAt).toLocaleString('en-LK')}</small></div>
         <span><Package /> {order.items.length} items</span><b>{formatLkr(order.totalAmount)}</b><OrderStatusBadge status={order.status} />
         <div className="order-actions"><Link className="button button--secondary" to={`/orders/${order._id}`}>{order.status === 'delivered' ? 'View order' : 'Track order'}</Link>

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import type { CatalogueDish } from '../hooks/useFoodCatalogue'
 import { formatLkr } from '../services/sriLankanData'
 import { useCart } from '../store/CartContext'
-import { restaurantImageUrl } from '../core/api/imageUrl';
+import { resolveImageUrl } from '../core/api/imageUrl';
 
 export function FoodCard({ dish }: { dish: CatalogueDish }) {
   const cart = useCart()
@@ -13,7 +13,7 @@ export function FoodCard({ dish }: { dish: CatalogueDish }) {
       <img
   loading="lazy"
   src={
-    restaurantImageUrl(dish.imageUrl) ||
+    resolveImageUrl(dish.imageUrl) ||
     '/images/food/sri_lankan_feast.jpg'
   }
   alt={dish.name}
@@ -29,7 +29,7 @@ export function FoodCard({ dish }: { dish: CatalogueDish }) {
       <p className="food-card__restaurant">{dish.restaurantName}</p>
       <p className="food-card__description">{dish.description || 'Freshly prepared and delivered to you.'}</p>
       <div className="food-card__meta"><span><Star fill="currentColor" /> 4.8</span><span><Clock3 /> 20–30 min</span></div>
-      <footer><strong>{formatLkr(dish.price)}</strong><button disabled={!available} aria-label={`Add ${dish.name} to cart`} onClick={() => cart.addItem({ id: dish._id, restaurantId: dish.restaurant, name: dish.name, description: dish.description ?? '', price: dish.price, category: dish.category, image: restaurantImageUrl(dish.imageUrl) || '/images/food/sri_lankan_feast.jpg' })}><Plus /> <span>{available ? 'Add' : 'Unavailable'}</span></button></footer>
+      <footer><strong>{formatLkr(dish.price)}</strong><button disabled={!available} aria-label={`Add ${dish.name} to cart`} onClick={() => cart.addItem({ id: dish._id, restaurantId: dish.restaurant, name: dish.name, description: dish.description ?? '', price: dish.price, category: dish.category, image: resolveImageUrl(dish.imageUrl) || '/images/food/sri_lankan_feast.jpg' })}><Plus /> <span>{available ? 'Add' : 'Unavailable'}</span></button></footer>
     </div>
   </article>
 }

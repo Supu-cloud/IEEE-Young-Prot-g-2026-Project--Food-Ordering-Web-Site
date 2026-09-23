@@ -1,3 +1,4 @@
+import { resolveImageUrl } from '../core/api/imageUrl'
 /* eslint-disable react-refresh/only-export-components -- provider and its typed hook form one cohesive module */
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { CartLine, MenuItem } from '../types'
@@ -22,7 +23,7 @@ const CartContext = createContext<CartContextValue | null>(null)
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>([]); const [syncError,setSyncError]=useState(''); const { user } = useAuth()
-  const applyApiCart = (cart: ApiCart) => { setSyncError(''); setLines(cart.items.map(({ menuItem, quantity }) => ({ id: menuItem._id, restaurantId: menuItem.restaurant, restaurantName: cart.groups?.find(group => group.restaurant === menuItem.restaurant)?.restaurantName, name: menuItem.name, description: menuItem.description ?? '', price: menuItem.price, category: menuItem.category, image: menuItem.imageUrl ?? '/images/food/sri_lankan_feast.jpg', quantity }))); }
+  const applyApiCart = (cart: ApiCart) => { setSyncError(''); setLines(cart.items.map(({ menuItem, quantity }) => ({ id: menuItem._id, restaurantId: menuItem.restaurant, restaurantName: cart.groups?.find(group => group.restaurant === menuItem.restaurant)?.restaurantName, name: menuItem.name, description: menuItem.description ?? '', price: menuItem.price, category: menuItem.category, image: resolveImageUrl(menuItem.imageUrl) ?? '/images/food/sri_lankan_feast.jpg', quantity }))); }
   useEffect(() => { if (environment.useMocks || user?.role !== 'customer') return; let active=true; cartApi.get().then((cart)=>{if(active)applyApiCart(cart)}).catch((error)=>{if(active)setSyncError(error instanceof Error?error.message:'Unable to load cart')}); return()=>{active=false} }, [user])
   const addItem = (item: MenuItem) => {
     if (!environment.useMocks && user?.role === 'customer') {

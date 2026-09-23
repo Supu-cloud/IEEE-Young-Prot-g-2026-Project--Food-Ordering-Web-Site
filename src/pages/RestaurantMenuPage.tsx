@@ -6,7 +6,7 @@ import { EmptyState, ErrorState, LoadingState } from '../components/ui/AsyncStat
 import { menuApi, restaurantApi } from '../core/api/services'
 import { useAsyncResource } from '../core/api/useAsyncResource'
 import { useRestaurantResource } from '../core/api/restaurantRefresh'
-import { restaurantImageUrl } from '../core/api/imageUrl'
+import { resolveImageUrl } from '../core/api/imageUrl'
 import { formatLkr } from '../services/sriLankanData'
 import { useCart } from '../store/CartContext'
 
@@ -23,7 +23,7 @@ export function RestaurantMenuPage() {
   return <div className="page container">
     <Link className="back-link" to="/restaurants"><ArrowLeft /> Back to restaurants</Link>
     <section className="restaurant-hero connected-restaurant">
-      <div className="connected-cover">{restaurant.imageUrl ? <img src={restaurantImageUrl(restaurant.imageUrl)} alt={`${restaurant.name} logo`} /> : <Store />}</div>
+      <div className="connected-cover">{restaurant.imageUrl ? <img src={resolveImageUrl(restaurant.imageUrl)} alt={`${restaurant.name} logo`} /> : <Store />}</div>
       <div><span className="eyebrow">{restaurant.isOpen ? 'Accepting orders' : 'Currently closed'}</span><h1>{restaurant.name}</h1><span className="eyebrow">{restaurant.category}</span><p>{restaurant.description}</p><div className="restaurant-details"><span><MapPin /> {restaurant.address}</span><span><Phone /> {restaurant.phone}</span><span><Clock3 /> Check menu availability below</span></div></div>
       {cart.count > 0 && <aside className="cart-preview"><strong>Your cart</strong><span>{cart.count} items</span><b>{formatLkr(cart.subtotal)}</b><Link className="button button--secondary" to="/cart">View cart</Link></aside>}
     </section>

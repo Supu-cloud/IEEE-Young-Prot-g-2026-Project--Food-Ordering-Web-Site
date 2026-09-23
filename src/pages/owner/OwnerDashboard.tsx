@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/AsyncState'
 import { ownerApi, restaurantApi } from '../../core/api/services'
 import { useRestaurantResource } from '../../core/api/restaurantRefresh'
-import { restaurantImageUrl } from '../../core/api/imageUrl'
+import { resolveImageUrl } from '../../core/api/imageUrl'
 import { formatLkr } from '../../services/sriLankanData'
 import { OwnerOrderBadgeV2 } from './OwnerOrdersV2Page'
 import { statusStyle } from './orderStatus'
@@ -17,7 +17,7 @@ export function OwnerDashboard() {
   return <>
     <div className="portal-title owner-welcome"><div><span className="eyebrow">Restaurant workspace</span><h1>Ayubowan, {data.owner.name}</h1><p>{data.restaurant ? `${data.restaurant.name} service at a glance.` : 'Set up your restaurant to begin managing orders.'}</p></div>{data.restaurant&&<button className={`availability-switch ${data.restaurant.isOpen?'online':''}`} onClick={()=>void toggle()}><Store/><span><strong>{data.restaurant.isOpen?'Restaurant open':'Restaurant closed'}</strong><small>{data.restaurant.isOpen?'Accepting new orders':'Not accepting orders'}</small></span></button>}</div>
     {!data.restaurant?<><EmptyState title="Create your restaurant" message="Your approved owner account is ready. Add your restaurant details to begin."/><p className="owner-setup-action"><Link className="button button--primary" to="/owner/restaurant">Set up restaurant</Link></p></>:<>
-      <div className="owner-restaurant-summary">{data.restaurant.imageUrl && <img src={restaurantImageUrl(data.restaurant.imageUrl)} alt={`${data.restaurant.name} logo`} />}<div><h2>{data.restaurant.name}</h2><span>{data.restaurant.category}</span><p>{data.restaurant.address}</p></div></div>
+      <div className="owner-restaurant-summary">{data.restaurant.imageUrl && <img src={resolveImageUrl(data.restaurant.imageUrl)} alt={`${data.restaurant.name} logo`} />}<div><h2>{data.restaurant.name}</h2><span>{data.restaurant.category}</span><p>{data.restaurant.address}</p></div></div>
       <div className="metric-grid owner-metrics">
         <article><span><ReceiptText/></span><div><small>Today&apos;s orders</small><strong>{data.metrics.todayOrders}</strong><em>Created today</em></div></article>
         <article><span><Clock3/></span><div><small>Active orders</small><strong>{data.metrics.activeOrders}</strong><em>Needs attention</em></div></article>
